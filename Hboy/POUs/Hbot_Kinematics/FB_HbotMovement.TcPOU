@@ -1,0 +1,166 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <POU Name="FB_HbotMovement" Id="{0eb645d9-93ef-4d31-aced-27d980e39654}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_HbotMovement EXTENDS FB_HbotKinematics
+VAR_INPUT
+	MovementMode : INT := MoveAbsolute;
+	rLinearSpeed : REAL;
+	rCurrentX : REAL;
+	rCurrentY : REAL;
+	rDeltaX : REAL;
+	rDeltaY : REAL;
+	bExecute : BOOL;
+	rTarget : ARRAY[0..1] OF REAL;
+END_VAR
+VAR_OUTPUT
+	bDone : BOOL;
+	bError : BOOL;
+	bBusy : BOOL;
+END_VAR
+VAR
+	McMoveAbsA : MC_MoveAbsolute;
+	McMoveAbsB : MC_MoveAbsolute;
+	McMoveRelA : MC_MoveRelative;
+	McMoveRelB : MC_MoveRelative;
+	
+	aRotationalDisplacement : ARRAY [0..1] OF REAL;
+	aRotationalVelocity : ARRAY [0..1] OF REAL;
+	bBypass: ARRAY[0..1] OF BOOL;
+	
+	MoveRelative : INT := 1;
+	MoveAbsolute : INT := 0;
+END_VAR
+VAR_IN_OUT
+	StepperA	:	AXIS_REF;
+	StepperB	:	AXIS_REF;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF McMoveAbsA.Error OR McMoveAbsB.Error OR McMoveRelA.Error OR McMoveRelB.Error THEN
+	bError := TRUE;
+END_IF
+
+IF bExecute AND NOT bError THEN
+	bDone := FALSE;
+	IF MovementMode = MoveAbsolute THEN
+		rTarget[0] := rDeltaX - rCurrentX;
+		rTarget[1] := rDeltaY - rCurrentY;
+		aRotationalDisplacement := CalculateAxisRotationRelative(rDeltaX, rDeltaY); // calculate displacement
+		aRotationalVelocity := CalculateVelocities(rTarget[0], rTarget[1], rLinearSpeed); // calculate velocity
+	ELSE
+		rTarget[0] := rDeltaX;
+		rTarget[1] := rDeltaY;
+		aRotationalDisplacement := CalculateAxisRotationRelative(rTarget[0], rTarget[1]); // calculate displacement
+		aRotationalVelocity := CalculateVelocities(rTarget[0], rTarget[1], rLinearSpeed); // calculate velocity
+	END_IF
+	
+	// checking if displacement or velocity is 0, if so, don't move the stepper
+	IF aRotationalVelocity[0] = 0 THEN
+		bBypass[0] := TRUE;
+	END_IF
+	
+	IF aRotationalVelocity[1] = 0 THEN
+		bBypass[1] := TRUE;
+	END_IF
+	
+	//===================== checking if the movement is absolute or relative=======================
+	IF MovementMode = MoveRelative THEN
+		IF NOT bBypass[0] THEN // check edge case
+			McMoveRelA(Axis := StepperA, Execute := TRUE, Distance := aRotationalDisplacement[0], Velocity := aRotationalVelocity[0]);
+		END_IF
+		
+		IF NOT bBypass[1] THEN // check edge case
+			McMoveRelB(Axis := StepperB, Execute := TRUE, Distance := aRotationalDisplacement[1], Velocity := aRotationalVelocity[1]);
+		END_IF
+		bBusy := TRUE;
+		
+		IF (McMoveRelA.Done OR bBypass[0]) AND (McMoveRelB.Done OR bBypass[1]) THEN
+			bBusy := FALSE;
+			bDone := TRUE;
+			McMoveRelA(Axis := StepperA, Execute := FALSE);
+			McMoveRelB(Axis := StepperB, Execute := FALSE);
+			bExecute := FALSE;
+			bBypass[0] := FALSE;
+			bBypass[1] := FALSE;
+		END_IF
+	
+	ELSIF MovementMode = MoveAbsolute THEN
+		IF NOT bBypass[0] THEN
+			McMoveAbsA(Axis := StepperA, Execute := TRUE, Position := aRotationalDisplacement[0], Velocity := aRotationalVelocity[0]);
+		END_IF
+		
+		IF NOT bBypass[1] THEN
+			McMoveAbsB(Axis := StepperB, Execute := TRUE, Position := aRotationalDisplacement[1], Velocity := aRotationalVelocity[1]);
+		END_IF
+		bBusy := TRUE;
+		
+		IF (McMoveAbsA.Done OR bBypass[0]) AND (McMoveAbsB.Done OR bBypass[1]) THEN
+			bBusy := FALSE;
+			bDone := TRUE;
+			McMoveAbsA(Axis := StepperA, Execute := FALSE);
+			McMoveAbsB(Axis := StepperB, Execute := FALSE);
+			bExecute := FALSE;
+			bBypass[0] := FALSE;
+			bBypass[1] := FALSE;
+		END_IF
+	END_IF
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="FB_HbotMovement">
+      <LineId Id="72" Count="0" />
+      <LineId Id="74" Count="1" />
+      <LineId Id="73" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="149" Count="0" />
+      <LineId Id="152" Count="1" />
+      <LineId Id="156" Count="0" />
+      <LineId Id="160" Count="1" />
+      <LineId Id="157" Count="2" />
+      <LineId Id="162" Count="1" />
+      <LineId Id="154" Count="0" />
+      <LineId Id="116" Count="0" />
+      <LineId Id="138" Count="0" />
+      <LineId Id="132" Count="1" />
+      <LineId Id="130" Count="0" />
+      <LineId Id="134" Count="0" />
+      <LineId Id="136" Count="1" />
+      <LineId Id="135" Count="0" />
+      <LineId Id="139" Count="0" />
+      <LineId Id="125" Count="0" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="120" Count="0" />
+      <LineId Id="97" Count="0" />
+      <LineId Id="100" Count="0" />
+      <LineId Id="102" Count="0" />
+      <LineId Id="124" Count="0" />
+      <LineId Id="104" Count="0" />
+      <LineId Id="83" Count="0" />
+      <LineId Id="143" Count="0" />
+      <LineId Id="42" Count="0" />
+      <LineId Id="84" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="90" Count="1" />
+      <LineId Id="48" Count="0" />
+      <LineId Id="140" Count="0" />
+      <LineId Id="142" Count="0" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="52" Count="0" />
+      <LineId Id="56" Count="0" />
+      <LineId Id="110" Count="1" />
+      <LineId Id="109" Count="0" />
+      <LineId Id="112" Count="3" />
+      <LineId Id="85" Count="0" />
+      <LineId Id="144" Count="0" />
+      <LineId Id="59" Count="0" />
+      <LineId Id="86" Count="0" />
+      <LineId Id="60" Count="0" />
+      <LineId Id="92" Count="1" />
+      <LineId Id="63" Count="0" />
+      <LineId Id="145" Count="1" />
+      <LineId Id="54" Count="0" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="27" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,97 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="PrepareAxes" Id="{586677db-b8ca-4b80-b9a1-92448935324c}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PrepareAxes
+VAR
+	switchcase : (Chilling, Reset, Power, Movement, lol, Error);
+	limitx : BOOL;
+	limity : BOOL;
+	
+	// define kinematics objects
+	fbBot : FB_HbotMovement;
+	fbHome : FB_HbotHome;
+	X : REAL;
+	Y : REAL;
+	mode : STRING;
+	yee : BOOL;
+	rere : ARRAY[0..1] OF REAL;
+	
+	// grouped fb
+	fbResetAll : FB_ResetAll;
+	fbPowerAll : FB_PowerAll;
+	
+	// done indicator
+	bDone : BOOL;
+	bError : BOOL;
+END_VAR
+
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE switchcase OF
+	Chilling:
+		fbResetAll(io_M1 := GVL.StepperReferenceA, io_M2 := GVL.StepperReferenceB, bExecute := FALSE);
+		switchcase := Reset;
+		
+	Reset:
+		fbResetAll(io_M1 := GVL.StepperReferenceA, io_M2 := GVL.StepperReferenceB, bExecute := TRUE);
+		IF fbResetAll.bDone THEN
+			switchcase := Power;
+		ELSIF fbResetAll.bError THEN
+			switchcase := Error;
+		END_IF
+		
+	Power:
+		fbPowerAll(bEnable := TRUE, io_M1 := GVL.StepperReferenceA, io_M2 := GVL.StepperReferenceB);
+		IF fbPowerAll.bStatus THEN
+			switchcase := Movement;
+		ELSIF fbPowerAll.bError THEN
+			switchcase := Error;
+		END_IF
+	Movement:
+		bDone := TRUE;
+//		fbBot(MovementMode:= fbBot.MoveRelative, rDeltaX:= X, rDeltaY := Y, bExecute := yee,
+//				StepperA := GVL.StepperReferenceA, StepperB := GVL.StepperReferenceB, rLinearSpeed := 100,
+//				rCurrentX := HbotForwardKinematics.rCurrentX, rCurrentY := HbotForwardKinematics.rCurrentY);
+//		fbHome(bExecute := yee, Velocity := 100, StepperA := GVL.StepperReferenceA, StepperB := GVL.StepperReferenceB, limitSwitchX := limitx, limitSwitchY  := limity);
+//		IF fbBot.bDone THEN
+//			switchcase := lol;
+//		END_IF
+//		IF fbBot.bError THEN
+//			switchcase := Error;
+//		END_IF
+		;
+	Error:
+		bError := TRUE;
+		switchcase := Chilling;
+END_CASE]]></ST>
+    </Implementation>
+    <LineIds Name="PrepareAxes">
+      <LineId Id="5" Count="0" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="91" Count="0" />
+      <LineId Id="141" Count="0" />
+      <LineId Id="87" Count="0" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="92" Count="0" />
+      <LineId Id="27" Count="3" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="37" Count="0" />
+      <LineId Id="94" Count="0" />
+      <LineId Id="38" Count="1" />
+      <LineId Id="41" Count="1" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="169" Count="0" />
+      <LineId Id="52" Count="0" />
+      <LineId Id="84" Count="1" />
+      <LineId Id="117" Count="0" />
+      <LineId Id="76" Count="2" />
+      <LineId Id="80" Count="2" />
+      <LineId Id="15" Count="1" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="196" Count="0" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

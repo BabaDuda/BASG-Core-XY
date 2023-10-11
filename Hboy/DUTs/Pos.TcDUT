@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <DUT Name="Pos" Id="{99a14e6b-1470-4c19-b323-981627db0ea1}">
+    <Declaration><![CDATA[TYPE Pos :
+STRUCT
+	x : REAL;
+	y : REAL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

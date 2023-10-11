@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="TcXbox" Id="{3e6f8dc1-a9c2-4cd0-9477-fab35e290811}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM TcXbox
+VAR
+	xBoxController : FB_XBOX_Controller(NETID := '', iControllerNumber := 1);
+	
+	StartXbox : NT_StartProcess;
+	
+	bIsconnected : BOOL;
+	
+	t1 : TIME := T#10M;
+	t2 : TIME := T#2S;
+	t3 : TIME;
+	t4 : UDINT;
+	
+	arrTest : ARRAY [0..9] OF BOOL;
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[StartXbox(
+	NETID:= , 
+	PATHSTR:= 'C:\Program Files\Beckhoff Community\TwinCAT Xbox Controller Service\ADS-Controller-Server.exe', 
+	DIRNAME:= 'C:\Program Files\Beckhoff Community\TwinCAT Xbox Controller Service', 
+	COMNDLINE:= , 
+	START:= TRUE, 
+	TMOUT:= , 
+	BUSY=> , 
+	ERR=> , 
+	ERRID=> );
+
+xBoxController.Cycle();
+
+bIsconnected := xboxController.P_Status.bConnected;
+ ]]></ST>
+    </Implementation>
+    <LineIds Name="TcXbox">
+      <LineId Id="22" Count="8" />
+      <LineId Id="18" Count="1" />
+      <LineId Id="2" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="84" Count="0" />
+      <LineId Id="71" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

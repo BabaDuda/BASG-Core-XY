@@ -1,0 +1,92 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="HbotForwardKinematics" Id="{a648ff5d-ed23-4927-a7f3-d9a41701dedb}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM HbotForwardKinematics
+VAR
+	rCurrentY : REAL;
+	rCurrentX : REAL;
+	
+	HMIX : REAL;
+	HMIY : REAL;
+	
+	currentpos : Pos;
+	len : ULINT := 4000;
+	hist : ARRAY[1..1, 0..4000] OF Pos;
+	i : ULINT;
+	timer : TON;
+	fbAms : FB_GetLocalAmsNetId;
+	bReqStarted : BOOL := TRUE;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// calculating real time positions based on axes A and B
+rCurrentX := (-GVL.StepperReferenceA.NcToPlc.ActPos - GVL.StepperReferenceB.NcToPlc.ActPos)/2;
+rCurrentY := (-GVL.StepperReferenceA.NcToPlc.ActPos + GVL.StepperReferenceB.NcToPlc.ActPos)/2;
+HMIX := Round2dp(rCurrentX);
+HMIY := Round2dp(rCurrentY);
+
+// keeping historical positions
+// ========Step 1, create scruct=======
+currentpos.x := rCurrentX;
+currentpos.y := rCurrentY;
+
+// ========Step 2, every 0.5 seconds, set new data to be index 0, and do a SHIFT command to the right=======
+timer(IN := TRUE, PT := T#0.5S);
+IF timer.Q THEN
+	hist[1,0] := currentpos;
+	FOR i := len-1 TO 1 BY -1 DO
+	  hist[1,i] := hist[1,i-1];
+	END_FOR 
+	timer(IN := FALSE);
+END_IF
+// ===========================================================================
+// =========Just to get local ams net id for python script========
+IF bReqStarted THEN
+	fbAms(bExecute := TRUE, tTimeOut := T#2S);
+	IF NOT fbAms.bBusy THEN
+		fbAms(bExecute := FALSE);
+		bReqStarted := FALSE;
+	END_IF
+END_IF]]></ST>
+    </Implementation>
+    <Method Name="Round2dp" Id="{a335797a-07b5-47dd-b2fc-d48bdd863733}">
+      <Declaration><![CDATA[METHOD Round2dp : REAL
+VAR_INPUT
+	rNum : REAL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[Round2dp := INT_TO_REAL(REAL_TO_INT(rNum * 100))/100;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="HbotForwardKinematics">
+      <LineId Id="72" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="8" Count="0" />
+      <LineId Id="94" Count="1" />
+      <LineId Id="73" Count="0" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="74" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="76" Count="0" />
+      <LineId Id="75" Count="0" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="29" Count="0" />
+      <LineId Id="32" Count="2" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="35" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="77" Count="0" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="53" Count="0" />
+      <LineId Id="55" Count="1" />
+      <LineId Id="58" Count="0" />
+      <LineId Id="57" Count="0" />
+      <LineId Id="54" Count="0" />
+    </LineIds>
+    <LineIds Name="HbotForwardKinematics.Round2dp">
+      <LineId Id="10" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

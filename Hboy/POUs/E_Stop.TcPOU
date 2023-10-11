@@ -1,0 +1,79 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="E_Stop" Id="{3ce9636e-eaf2-469a-9fb2-a4ecaf34827f}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM E_Stop
+VAR
+	estoprtrig : R_TRIG ;
+	Resetrtrig : R_TRig;
+	
+	UserResetButton AT %I*: BOOL; 			(* Input signal for manual Reset activation *) // LINK TO GVL.ResetButton
+	UserEStopButton AT %I*: BOOL ; 			(* Input signal for manual E-stop activation *) // LINK TO GVL.EstopButton
+    EStop : BOOL := FALSE;				(* Emergency stop internal flag *)
+	
+	StopMotorA : MC_Stop;
+	StopMotorB : MC_Stop;
+	ResetMotorA : MC_Reset;
+	ResetMotorB : MC_Reset;
+	
+	casestate : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE  casestate  OF 
+	0 : //initialisation.
+		casestate := 10;
+		
+	10 : // Check If E_Stop isTriggered 
+	IF  UserEStopButton = FALSE THEN 
+		 StopMotorA(Execute := TRUE, Axis:= GVL.StepperReferenceA) ;  (* actual function to stop the motor *)
+		 StopMotorB(Execute := TRUE,Axis:= GVL.StepperReferenceB) ;  (* actual function to stop the motor *)
+		 casestate := 20; 
+		 ELSE 
+		ResetMotorA (Execute := FALSE, Axis := GVL.StepperReferenceA); (*Reset the Motors *)
+		ResetMotorB (Execute := FALSE, Axis := GVL.StepperReferenceB); (*Reset the Motors *)
+			 //chill again. Wait for Lim Switch Activation 
+	END_IF
+	
+	20 : // Wait for Limit Switches to NOT be pressed before allowing movement again
+	IF UserResetButton THEN
+		casestate := 30 ;
+		ELSE 
+			//chill	
+	END_IF
+			
+	30 : 
+		
+		IF StopMotorA.Active = FALSE THEN // IF FB not active, stop and start the FB 
+		StopMotorA(Execute := TRUE, Axis:= GVL.StepperReferenceA) ;  (* actual function to stop the motor *)
+		StopMotorB(Execute := TRUE,Axis:= GVL.StepperReferenceB) ;  (* actual function to stop 
+
+the motor *)
+		casestate := 40; 
+		ELSIF StopMotorA.Active = TRUE THEN  //After Stopping and Starting, If ACtive = True continue as per normal
+		ResetMotorA (Execute := TRUE, Axis := GVL.StepperReferenceA); (*Reset the Motors *)
+		ResetMotorB (Execute := TRUE, Axis := GVL.StepperReferenceB); (*Reset the Motors *)
+		StopMotorA(Execute := FALSE, Axis:= GVL.StepperReferenceA) ;  (* actual function to continue the motor *)
+		StopMotorB(Execute := FALSE,Axis:= GVL.StepperReferenceB) ;  (* actual function to continue the motor *)
+		casestate := 0;
+		END_IF
+	40 :  // Buffer for resetting the FB 
+		casestate := 30;
+		
+END_CASE
+]]></ST>
+    </Implementation>
+    <LineIds Name="E_Stop">
+      <LineId Id="150" Count="1" />
+      <LineId Id="153" Count="0" />
+      <LineId Id="192" Count="0" />
+      <LineId Id="157" Count="0" />
+      <LineId Id="191" Count="0" />
+      <LineId Id="159" Count="20" />
+      <LineId Id="210" Count="0" />
+      <LineId Id="209" Count="0" />
+      <LineId Id="180" Count="10" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

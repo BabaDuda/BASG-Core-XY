@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <DUT Name="Controller" Id="{1116ce3c-e681-4f9e-b11f-1f70e96e06b2}">
+    <Declaration><![CDATA[TYPE Controller :
+STRUCT
+	bDpadRight : BOOL;
+	bDpadLeft : BOOL;
+	bDpadUp : BOOL;
+	bDpadDown : BOOL;
+	bAbtn : BOOL;
+	bBbtn : BOOL;
+	bXbtn : BOOL;
+	bYbtn : BOOL;
+	rightStick : ARRAY[0..2] OF REAL;
+	leftStick : ARRAY[0..2] OF REAL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,193 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_HbotHome" Id="{211248de-5d88-41dd-be9c-3250d67eb550}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_HbotHome
+VAR_INPUT
+	bExecute : BOOL;
+	Velocity : REAL;
+END_VAR
+VAR_OUTPUT
+	bDone : BOOL;
+	bError : BOOL;
+	bBusy : BOOL;
+END_VAR
+VAR
+	init : R_TRIG;
+	StepperAJog : MC_Jog;
+	StepperBJog : MC_Jog;
+	
+	StepperASetPos : MC_SetPosition;
+	StepperBSetPos : MC_SetPosition;
+	
+	StepperAHome : MC_Home;
+	StepperBHome : MC_Home;
+	
+	StepperAHalt : MC_Halt;
+	StepperBHalt : MC_Halt;
+	
+	homeSequence : (homeX, homeY, halt, forcecalibration, done, error);
+	ErrorTimeout : ton;
+	ErrorTimeoutCase : INT;
+END_VAR
+VAR_IN_OUT
+	StepperA	:	AXIS_REF;
+	StepperB	:	AXIS_REF;
+	
+	limitSwitchX : BOOL;
+	limitSwitchY : BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[init(CLK := bExecute); // detect rising edge
+
+IF bExecute AND NOT bError THEN 
+	IF init.Q THEN // if it is on rising edge (i.e, first instance of bexecute is true
+		homeSequence := homeX; // set switch case to homeX
+	END_IF
+	
+	CASE homeSequence OF
+	homeX :
+		bBusy := TRUE;
+		bDone := FALSE;
+		// Home Cartesian X, Both steppers to jog forward at the same speed
+		StepperAJog(Axis := StepperA, JogForward := TRUE, Velocity := Velocity);
+		StepperBJog(Axis := StepperB, JogForward := TRUE, Velocity := Velocity);
+		IF StepperAJog.Error OR StepperBJog.Error THEN
+			homeSequence := error;
+		END_IF
+		IF limitSwitchX THEN // if limit switch is triggered, stop jogging and go to homeY case
+			StepperAJog(Axis := StepperA, JogForward := FALSE);
+			StepperBJog(Axis := StepperB, JogForward := FALSE);
+			homeSequence := homeY;
+		END_IF
+		IF StepperAJog.CommandAborted OR StepperBJog.CommandAborted THEN 
+			homeSequence := Error;
+		END_IF
+	
+	homeY :
+		// Home Cartesian Y, Both steppers to jog in opposite directions at the same speed
+		StepperAJog(Axis := StepperA, JogForward := TRUE, Velocity := Velocity);
+		StepperBJog(Axis := StepperB, JogBackwards := TRUE, Velocity := Velocity);
+		IF StepperAJog.Error OR StepperBJog.Error THEN
+			homeSequence := error;
+		END_IF
+		IF limitSwitchY THEN // if limit switch is triggered, stop jogging and go to halt case
+			StepperAJog(Axis := StepperA, JogForward := FALSE);
+			StepperBJog(Axis := StepperB, JogBackwards := FALSE);
+			homeSequence := halt;
+		END_IF
+		
+		IF StepperAJog.CommandAborted OR StepperBJog.CommandAborted THEN 
+			homeSequence := Error;
+		END_IF
+		
+	halt :
+		// halting motors
+		StepperAHalt(Axis := StepperA, Execute := TRUE);
+		StepperBHalt(Axis := StepperB, Execute := TRUE);
+		IF StepperAHalt.Done AND StepperBHalt.Done THEN
+			homeSequence := forcecalibration; // once stopped, reset mc_halt and go to force calibration case
+			StepperAHalt(Axis := StepperA, Execute := FALSE);
+			StepperBHalt(Axis := StepperB, Execute := FALSE);
+		ELSIF StepperAHalt.Error OR StepperBHalt.Error THEN
+			homeSequence := error;
+		END_IF
+		
+		
+	forcecalibration :
+		// set stepper positions to 0
+		StepperASetPos(Axis := StepperA, Position := 0.0, Mode := FALSE, Execute := TRUE);
+		StepperBSetPos(Axis := StepperB, Position := 0.0, Mode := FALSE, Execute := TRUE);
+		IF StepperASetPos.Error OR StepperBSetPos.Error THEN
+			homeSequence := error;
+		ELSIF StepperASetPos.Done AND StepperBSetPos.Done THEN
+			homeSequence := done; // go to done case
+			StepperASetPos(Axis := StepperA, Position := 0.0, Mode := FALSE, Execute := FALSE);
+			StepperBSetPos(Axis := StepperB, Position := 0.0, Mode := FALSE, Execute := FALSE);
+		END_IF
+		
+	done :
+		bDone := TRUE;
+		bBusy := FALSE;
+		
+	error:
+	
+		CASE ErrorTimeoutCase OF 
+		0: bError := TRUE;
+		ErrorTimeout (IN := TRUE, PT := T#5000MS);
+		IF ErrorTimeout.Q THEN 
+			ErrorTimeoutCase := 10; 
+		END_IF
+		10: bError := FALSE; 
+		homeSequence := done;
+		ErrorTimeoutCase := 0; 
+		
+		END_CASE
+		
+	END_CASE
+ELSE
+	bDone := FALSE;
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="FB_HbotHome">
+      <LineId Id="89" Count="0" />
+      <LineId Id="128" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="92" Count="3" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="35" Count="0" />
+      <LineId Id="66" Count="1" />
+      <LineId Id="129" Count="0" />
+      <LineId Id="38" Count="0" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="51" Count="1" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="45" Count="1" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="168" Count="2" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="53" Count="0" />
+      <LineId Id="130" Count="0" />
+      <LineId Id="55" Count="8" />
+      <LineId Id="171" Count="0" />
+      <LineId Id="174" Count="0" />
+      <LineId Id="172" Count="1" />
+      <LineId Id="54" Count="0" />
+      <LineId Id="110" Count="1" />
+      <LineId Id="131" Count="0" />
+      <LineId Id="112" Count="0" />
+      <LineId Id="116" Count="1" />
+      <LineId Id="120" Count="0" />
+      <LineId Id="124" Count="1" />
+      <LineId Id="122" Count="1" />
+      <LineId Id="119" Count="0" />
+      <LineId Id="121" Count="0" />
+      <LineId Id="84" Count="0" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="132" Count="0" />
+      <LineId Id="73" Count="0" />
+      <LineId Id="75" Count="0" />
+      <LineId Id="64" Count="0" />
+      <LineId Id="78" Count="0" />
+      <LineId Id="81" Count="1" />
+      <LineId Id="126" Count="1" />
+      <LineId Id="79" Count="0" />
+      <LineId Id="83" Count="0" />
+      <LineId Id="77" Count="0" />
+      <LineId Id="76" Count="0" />
+      <LineId Id="68" Count="2" />
+      <LineId Id="188" Count="0" />
+      <LineId Id="179" Count="0" />
+      <LineId Id="181" Count="6" />
+      <LineId Id="189" Count="0" />
+      <LineId Id="177" Count="0" />
+      <LineId Id="175" Count="0" />
+      <LineId Id="65" Count="0" />
+      <LineId Id="27" Count="0" />
+      <LineId Id="133" Count="1" />
+      <LineId Id="24" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

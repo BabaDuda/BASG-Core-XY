@@ -1,0 +1,405 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_Movement_Xbox" Id="{4e31464d-e99c-4f50-847f-9450243c2293}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Movement_Xbox
+VAR_INPUT
+	bExecute : BOOL;
+	balluff_pos	AT %I* 	: BOOL;
+	balluff_neg	at %I* 	: BOOL;
+	leftSwitch	at %I* 	: BOOL;
+	rightSwitch	at %I* 	: BOOL;
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	caseswitch : (init, activatexbox, movement, teachframe, inputarrangement, arrange, map, startmovement, end, errorhandler, error);
+	
+	// xbox controls
+	bXboxUp : BOOL;
+	bXboxRight : BOOL;
+	bXboxDown : BOOL;
+	bXboxLeft : BOOL;
+	ProcessXbox : NT_StartProcess;
+	
+	// HMI controls
+	bBtnTeach : BOOL; 
+	bBtnArrange : BOOL;
+	bBtnConfirmArrangement : BOOL;
+	bBtnStartMovement : BOOL;
+	BtnTeachTrig : R_TRIG;
+	BtnArrangeTrig : R_TRIG;
+	BtnConfirmArrangementTrig : R_TRIG;
+	BtnStartMovementTrig : R_TRIG;
+	
+	// Frames to memorise positions
+	Frames : FB_Frames;
+	// Placeholder to hold current frame name
+	sFrameName : STRING;
+	msg : STRING; 
+	// Frame Arrangement
+	sTotalFramesString : STRING(700);
+	aFramesString : ARRAY[0..60] OF STRING;
+	
+	// To split strings into frames
+	poop : ARRAY[0..60] OF STRING;
+	i : INT;
+	bResultSplit : BOOL;
+	sSeperator : STRING := '\n';
+	iUntitledFrame : INT;
+	
+	// kinematics FBs
+	initPGT : R_TRIG; // used to detect first invokation of FB, stands for initialising postive going transition
+	fbMover : FB_HbotMovement;
+	fbHome : FB_HbotHome;
+	(* 20230711: Added Homing FBs to bypass existing homing method *)
+	StepperAHome : MC_Home;
+	StepperBHome : MC_Home;
+	
+	StepperAJog : MC_Jog;
+	StepperBJog : MC_Jog;
+	joggers : ARRAY[0..1] OF ARRAY[0..1] OF BOOL;
+	
+	// To Start Movement
+	fbTeachMove : FB_Movement_Teach;
+	
+	//Limit Switches	
+	
+	LEFTUPPERSENSOR : BOOL;
+	LEFTLOWERSENSOR : BOOL;
+	RIGHTUPPERSENSOR : BOOL;
+	RIGHTLOWERSENSOR : BOOL;
+	LEFTTROLLEYSENSOR : BOOL;
+	RIGHTTROLLEYSENSOR : BOOL;
+	
+	(* 20230929: Attempting to use Analog controls for movement - HbotKinematics *)
+	hbotCalc : FB_HbotKinematics;
+	ABVelo : ARRAY [0..1] OF REAL;
+	
+	XYVelo: ARRAY [0..1] OF REAL;
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[BtnTeachTrig(CLK := bBtnTeach);
+BtnArrangeTrig(CLK := bBtnArrange);
+BtnConfirmArrangementTrig(CLK := bBtnConfirmArrangement);
+BtnStartMovementTrig(CLK := bBtnStartMovement);
+initPGT(CLK := bExecute);
+
+IF balluff_pos THEN //x Maximum reached
+	IF TcXbox.xBoxController.P_Left_Joystick.fY > 0 THEN //remember that Y in xbox is x in Frame
+		XYVelo[0] := 0;
+	ELSE
+		XYVelo[0] := TcXbox.xBoxController.P_Left_Joystick.fY;
+	END_IF
+ELSIF balluff_neg THEN
+	IF TcXbox.xBoxController.P_Left_Joystick.fY < 0 THEN //remember that Y in xbox is x in Frame
+		XYVelo[0] := 0;
+	ELSE 
+		XYVelo[0] := TcXbox.xBoxController.P_Left_Joystick.fY;
+	END_IF
+ELSE
+	XYVelo[0] := TcXbox.xBoxController.P_Left_Joystick.fY;
+END_IF
+
+IF leftSwitch THEN //x Maximum reached
+	IF TcXbox.xBoxController.P_Left_Joystick.fX< 0 THEN //remember that X in xbox is Y in Frame
+		XYVelo[1] := 0;
+	ELSE
+		XYVelo[1] := TcXbox.xBoxController.P_Left_Joystick.fX;
+	END_IF
+ELSIF RightSwitch THEN
+	IF TcXbox.xBoxController.P_Left_Joystick.fX > 0 THEN //remember that X in xbox is Y in Frame
+		XYVelo[1] := 0;
+	ELSE
+		XYVelo[1] := TcXbox.xBoxController.P_Left_Joystick.fX;
+	END_IF
+ELSE
+	XYVelo[1] := TcXbox.xBoxController.P_Left_Joystick.fX;
+END_IF
+
+IF initPGT.Q THEN // if the FB just started running, set case to init case to HOME (safety)
+	caseswitch := activatexbox;
+END_IF
+
+IF bExecute THEN
+	
+	CASE caseswitch OF 
+(*		init:
+		(* 20230711: without proper limit switches homing is difficult *)
+		(* Homing with Set Position will be done instead *)
+		
+			(* Existing Homing *)
+			fbHome(bExecute := TRUE, StepperA := GVL.StepperReferenceA, StepperB := GVL.StepperReferenceB,
+				limitSwitchX := GVL.LimitSwitchX, limitSwitchY := GVL.LimitSwitchY);
+			IF fbHome.bError THEN
+				caseswitch := error;
+			ELSIF fbHome.bDone THEN
+				fbHome(bExecute := FALSE, StepperA := GVL.StepperReferenceA, StepperB := GVL.StepperReferenceB,
+				limitSwitchX := GVL.LimitSwitchX, limitSwitchY := GVL.LimitSwitchY);
+				caseswitch := activatexbox;
+			END_IF
+			
+			(* Current Homing - typically would be manually moving the axis to the centre before pressing Start *)
+			//StepperAHome(axis := gvl.StepperReferenceA, execute := TRUE, homingmode := MC_Direct, position := 0);
+			//StepperBHome(axis := gvl.StepperReferenceB, execute := TRUE, homingmode := MC_Direct, position := 0);
+			//IF stepperaHome.Done AND NOT stepperaHome.CommandAborted AND
+			//	
+			//	
+			//END_IF *)
+			
+		activatexbox:
+			caseswitch := movement;
+		
+		movement:
+		(* 20230711: DPad Buttons don't tally with the actual HBOT Frame, current (correct) config below *)
+			(*joggers := RunXboxJogger(Up := TcXbox.xBoxController.P_Buttons.DPad.bRight, Right := TcXbox.xBoxController.P_Buttons.DPad.bUp, Down := TcXbox.xBoxController.P_Buttons.DPad.bLeft, Left := TcXbox.xBoxController.P_Buttons.DPad.bDown);
+			StepperAJog(Axis := GVL.StepperReferenceA, JogForward := joggers[0][0], JogBackwards := joggers[0][1], Velocity := 100);
+			StepperBJog(Axis := GVL.StepperReferenceB, JogForward := joggers[1][0], JogBackwards := joggers[1][1], Velocity := 100);*)
+{'Region' := 'Analog Joystick Movement'}			
+		(* 20230929: Attempting to use Analog controls for movement *)
+		(*abVelo := hbotCalc.CalculateVelocities(rDeltaX:= TcXbox.xBoxController.P_Left_Joystick.fX, 
+												rDeltaY:= TcXbox.xBoxController.P_Left_Joystick.fY, 
+												rLinearSpeed:= 100.0);*)
+		//oriented 90deg i.e. flip X and Y Axes
+		//20231003: 
+		(*
+			IF LEFTSENSOR OR RIGHTSENSOR THEN
+				TcXbox.xBoxController.P_Left_Joystick.fY > 0 then				
+					TcXbox.xBoxController.P_Left_Joystick.fY := 0;
+		*)
+		abVelo := hbotCalc.CalculateAxisRotationRelative(rDeltaX:= (XYVelo[0]*1.6), 
+															rDeltaY:= (XYVelo[1])*1.6);
+		IF abvelo[0] > 0 THEN
+			StepperAJog.JogForward := TRUE;
+			StepperAJog.JogBackwards := FALSE;			
+		ELSIF abvelo[0] < 0 THEN
+			StepperAJog.JogForward := FALSE;
+			StepperAJog.JogBackwards := TRUE;
+		ELSE
+			StepperAJog.JogForward := FALSE;
+			stepperAJog.JogBackwards := FALSE;
+		END_IF
+		IF abvelo[1] > 0 THEN
+			StepperbJog.JogForward := TRUE;
+			StepperbJog.JogBackwards := FALSE;
+		ELSIF abvelo[1] < 0 THEN
+			StepperbJog.JogForward := FALSE;
+			StepperbJog.JogBackwards := TRUE;
+		ELSE
+			StepperbJog.JogForward := FALSE;
+			stepperbJog.JogBackwards := FALSE;
+		END_IF
+		//Use MC_JOGMODE_CONTINUOUS so that Velocity actually does something lmao
+		StepperAJog(Axis := GVL.StepperReferenceA, Velocity := ABS(abvelo[0]), mode := E_JogMode.MC_JOGMODE_CONTINOUS);
+		StepperBJog(Axis := GVL.StepperReferenceB, Velocity := ABS(abvelo[1]), mode := E_JogMode.MC_JOGMODE_CONTINOUS);
+{'endregion'}			
+		
+			IF BtnTeachTrig.Q THEN
+				caseswitch := teachframe;
+			END_IF
+			IF BtnArrangeTrig.Q THEN
+				caseswitch := inputarrangement;
+			END_IF
+			IF BtnStartMovementTrig.Q THEN
+				caseswitch := startmovement;
+			END_IF
+		
+		teachframe:
+			IF sFrameName = '' THEN
+				sFrameName := CONCAT('Unititled', INT_TO_STRING(iUntitledFrame));
+				IF (Frames.Teach(sName := sFrameName, rX := HbotForwardKinematics.rCurrentX, rY := HbotForwardKinematics.rCurrentY)) THEN
+					iUntitledFrame := iUntitledFrame + 1;
+					sFrameName := '';
+					caseswitch := movement;
+				END_IF
+			ELSIF (Frames.Teach(sName := sFrameName, rX := HbotForwardKinematics.rCurrentX, rY := HbotForwardKinematics.rCurrentY)) THEN
+				caseswitch := movement;
+			END_IF
+			
+		inputarrangement:
+	//		IF BtnConfirmArrangementTrig.Q THEN
+				IF sTotalFramesString <> '' THEN
+					caseswitch := arrange;
+				END_IF
+	//		END_IF
+			
+		arrange:
+			// split sTotalFramesString into array of string based on the new line seperator
+			MEMSET(ADR(aFramesString), fillByte :=0, n := SIZEOF(aFramesString));
+			aFramesString[0] := sTotalFramesString;
+			FOR i := 0 TO 59 DO
+				bResultSplit := FindAndSplit(	pSeparator := ADR(sSeperator),
+												pSrcString := ADR(aFramesString[i]),
+												pLeftString := ADR(aFramesString[i]),
+												nLeftSize := SIZEOF(aFramesString[i]),
+												pRightString := ADR(aFramesString[i+1]),
+												nRightSize := SIZEOF(aFramesString[i+1]),
+												bSearchFromRight:=FALSE);
+				IF NOT bResultSplit THEN
+					caseswitch := map;
+					EXIT;
+				END_IF
+			END_FOR
+			
+		map:
+			Frames.Map(aFramesString);
+			caseswitch := movement;
+			
+			
+			
+		startmovement:
+			fbTeachMove(bExecute := TRUE, aArrangedFrames := Frames.ArrangedFrames);
+			IF fbTeachMove.bExit THEN
+				fbTeachMove(bExecute := FALSE);
+				caseswitch := movement;
+			END_IF
+	END_CASE
+
+END_IF]]></ST>
+    </Implementation>
+    <Method Name="RunXboxJogger" Id="{d7e0c6aa-97ba-4cd5-932b-075522ff58be}">
+      <Declaration><![CDATA[METHOD RunXboxJogger : ARRAY [0..1] OF ARRAY [0..1] OF BOOL;
+VAR_INPUT
+	Left : BOOL;
+	Right : BOOL;
+	Up : BOOL;
+	Down : BOOL;
+END_VAR
+VAR
+	StepA : INT;
+	StepB : INT;
+	bStepAForward : BOOL;
+	bStepABackward : BOOL;
+	bStepBForward : BOOL;
+	bStepBBackward : BOOL;
+	placeHolder : ARRAY [0..1] OF ARRAY [0..1] OF BOOL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF Left THEN
+	StepA := StepA + 1;
+	StepB := StepB + 1;
+END_IF
+
+IF Down THEN
+	StepA := StepA + 1;
+	StepB := StepB - 1;
+END_IF
+
+IF Right THEN
+	StepA := StepA - 1;
+	StepB := StepB - 1;
+END_IF
+
+IF Up THEN
+	StepA := StepA - 1;
+	StepB := StepB + 1;
+END_IF
+
+IF StepA > 0 THEN
+	placeHolder[0][0] := TRUE;
+ELSIF StepA < 0 THEN
+	placeHolder[0][1] := TRUE;
+END_IF
+
+IF StepB > 0 THEN
+	placeHolder[1][0] := TRUE;
+ELSIF StepB < 0 THEN
+	placeHolder[1][1] := TRUE;
+END_IF
+RunXboxJogger := placeHolder;
+]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_Movement_Xbox">
+      <LineId Id="50" Count="0" />
+      <LineId Id="118" Count="0" />
+      <LineId Id="132" Count="0" />
+      <LineId Id="275" Count="0" />
+      <LineId Id="814" Count="0" />
+      <LineId Id="858" Count="30" />
+      <LineId Id="857" Count="0" />
+      <LineId Id="889" Count="0" />
+      <LineId Id="17" Count="2" />
+      <LineId Id="404" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="630" Count="0" />
+      <LineId Id="21" Count="1" />
+      <LineId Id="548" Count="1" />
+      <LineId Id="559" Count="1" />
+      <LineId Id="23" Count="8" />
+      <LineId Id="561" Count="1" />
+      <LineId Id="339" Count="0" />
+      <LineId Id="567" Count="0" />
+      <LineId Id="569" Count="0" />
+      <LineId Id="572" Count="0" />
+      <LineId Id="570" Count="1" />
+      <LineId Id="568" Count="0" />
+      <LineId Id="566" Count="0" />
+      <LineId Id="350" Count="0" />
+      <LineId Id="32" Count="1" />
+      <LineId Id="688" Count="9" />
+      <LineId Id="738" Count="1" />
+      <LineId Id="741" Count="0" />
+      <LineId Id="743" Count="0" />
+      <LineId Id="742" Count="0" />
+      <LineId Id="740" Count="0" />
+      <LineId Id="698" Count="35" />
+      <LineId Id="46" Count="0" />
+      <LineId Id="62" Count="0" />
+      <LineId Id="219" Count="1" />
+      <LineId Id="223" Count="0" />
+      <LineId Id="226" Count="1" />
+      <LineId Id="224" Count="1" />
+      <LineId Id="89" Count="2" />
+      <LineId Id="127" Count="2" />
+      <LineId Id="133" Count="0" />
+      <LineId Id="144" Count="1" />
+      <LineId Id="134" Count="0" />
+      <LineId Id="146" Count="2" />
+      <LineId Id="432" Count="0" />
+      <LineId Id="152" Count="1" />
+      <LineId Id="156" Count="0" />
+      <LineId Id="164" Count="0" />
+      <LineId Id="162" Count="0" />
+      <LineId Id="165" Count="0" />
+      <LineId Id="163" Count="0" />
+      <LineId Id="166" Count="1" />
+      <LineId Id="160" Count="0" />
+      <LineId Id="170" Count="0" />
+      <LineId Id="168" Count="1" />
+      <LineId Id="157" Count="0" />
+      <LineId Id="171" Count="1" />
+      <LineId Id="424" Count="0" />
+      <LineId Id="422" Count="0" />
+      <LineId Id="415" Count="5" />
+      <LineId Id="491" Count="0" />
+      <LineId Id="494" Count="0" />
+      <LineId Id="492" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="408" Count="0" />
+      <LineId Id="407" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Movement_Xbox.RunXboxJogger">
+      <LineId Id="5" Count="0" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="17" Count="3" />
+      <LineId Id="16" Count="0" />
+      <LineId Id="22" Count="3" />
+      <LineId Id="21" Count="0" />
+      <LineId Id="27" Count="3" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="33" Count="0" />
+      <LineId Id="41" Count="1" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="45" Count="4" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="57" Count="0" />
+      <LineId Id="50" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

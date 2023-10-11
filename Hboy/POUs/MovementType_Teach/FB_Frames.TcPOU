@@ -1,0 +1,102 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="FB_Frames" Id="{ad93ff7e-d8a3-4bf2-8978-b19a0709c4ac}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Frames
+VAR_INPUT
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	AllFrames : ARRAY[0..40] OF Frame;
+	ArrangedFrames : ARRAY[0..60] OF Frame;
+	i: INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="Map" Id="{459687c9-10ed-4392-89f1-e3d34977b4ca}">
+      <Declaration><![CDATA[METHOD Map : ARRAY[0..60] OF Frame
+VAR_INPUT
+	aFrameString : ARRAY[0..60] OF STRING;
+END_VAR
+VAR
+	i : INT;
+	j : INT;
+	PlaceHolder : ARRAY[0..60] OF Frame;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[FOR i := 0 TO 60 DO
+	IF aFrameString[i] = '' THEN
+		PlaceHolder[i].Name := ''; 
+		PlaceHolder[i].X := 0; 
+		PlaceHolder[i].Y := 0; 
+	ELSE
+		FOR j := 0 TO 60 DO
+			IF aFrameString[i] = AllFrames[j].Name THEN
+				PlaceHolder[i] := AllFrames[j];
+			ELSIF AllFrames[j].Name = '' THEN
+				EXIT;
+			END_IF
+		END_FOR
+		j := 0;
+	END_IF
+END_FOR
+ArrangedFrames := PlaceHolder;
+Map := PlaceHolder;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Teach" Id="{a56573b6-5505-4e7f-b46e-8b3a1e58c13e}">
+      <Declaration><![CDATA[METHOD Teach : BOOL
+VAR_INPUT
+	sName : STRING;
+	rX : REAL;
+	rY : REAL;
+END_VAR
+VAR
+	i : INT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[FOR i := 0 TO 30 BY 1 DO
+	IF AllFrames[i].Name = '' AND AllFrames[i].X = 0 AND AllFrames[i].Y = 0 THEN
+		AllFrames[i].Name := sName;
+		AllFrames[i].X := rX;
+		AllFrames[i].Y := rY;
+		Teach := TRUE;
+		EXIT;
+	END_IF
+END_FOR]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_Frames">
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Frames.Map">
+      <LineId Id="5" Count="0" />
+      <LineId Id="42" Count="1" />
+      <LineId Id="47" Count="1" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="12" Count="0" />
+      <LineId Id="14" Count="0" />
+      <LineId Id="17" Count="1" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="32" Count="0" />
+      <LineId Id="46" Count="0" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="19" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_Frames.Teach">
+      <LineId Id="5" Count="0" />
+      <LineId Id="8" Count="0" />
+      <LineId Id="10" Count="0" />
+      <LineId Id="15" Count="1" />
+      <LineId Id="18" Count="0" />
+      <LineId Id="17" Count="0" />
+      <LineId Id="11" Count="0" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,87 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="MovementTypeSelector" Id="{05a34db7-57c4-4ffe-a0a1-689688bc2c16}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MovementTypeSelector
+VAR
+	fbGcode : FB_Movement_Gcode;
+	fbHome : FB_HbotHome;
+	fbXbox : FB_Movement_Xbox;
+	limx : BOOL;
+	limy : BOOL;
+	
+	caseswitch : (none, home, gcode, teach, vision, error);
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE caseswitch OF
+	none:
+	fbGcode(bExecute := FALSE);
+	fbXbox(bExecute := FALSE);
+	fbHome(bExecute := FALSE, StepperA := GVL.StepperReferenceA, StepperB := GVL.StepperReferenceB,limitSwitchX := GVL.LimitSwitchMidLeft, limitSwitchY := GVL.LimitSwitchBotLeft);
+		(* 20230712: Decoupling from HMI, for now clicking on Xbox Controller's Select btn goes to Teach *)
+		IF tcXbox.xBoxController.P_Buttons.bB_Button THEN
+			caseswitch := teach;
+		END_IF
+		
+		(* Home first before going into Teach If you do not, it will take its current location as "0" although it technically doesnt matter for now*)
+		(*IF TcXbox.xBoxController.P_Buttons.bA_Button THEN 
+			caseswitch := home;
+		END_IF*) //UNCOMMENT AFTER LIMIT SWITCHES ARE READY YOU RETARD 
+		
+	home:
+		fbHome(bExecute := TRUE, StepperA := GVL.StepperReferenceA, StepperB := GVL.StepperReferenceB,
+			limitSwitchX := GVL.LimitSwitchMidLeft, limitSwitchY := GVL.LimitSwitchBotLeft);
+		IF fbHome.bError THEN
+			caseswitch := error;
+		ELSIF fbHome.bDone THEN
+			fbHome(bExecute := FALSE, StepperA := GVL.StepperReferenceA, StepperB := GVL.StepperReferenceB,
+			limitSwitchX := GVL.LimitSwitchMidLeft, limitSwitchY := GVL.LimitSwitchBotLeft);
+			caseswitch := none;
+		END_IF
+		
+	gcode:
+		fbGcode(bExecute := TRUE);
+		IF fbGcode.bFinished AND NOT fbGcode.initial.Q THEN
+			caseswitch := none;
+		END_IF
+		
+	teach:
+		fbXbox(bExecute := TRUE);
+
+	Error:
+		caseswitch := None;
+		
+END_CASE]]></ST>
+    </Implementation>
+    <LineIds Name="MovementTypeSelector">
+      <LineId Id="5" Count="0" />
+      <LineId Id="13" Count="1" />
+      <LineId Id="67" Count="0" />
+      <LineId Id="108" Count="0" />
+      <LineId Id="93" Count="0" />
+      <LineId Id="116" Count="3" />
+      <LineId Id="123" Count="0" />
+      <LineId Id="120" Count="2" />
+      <LineId Id="111" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="23" Count="1" />
+      <LineId Id="27" Count="1" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="55" Count="1" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="29" Count="0" />
+      <LineId Id="112" Count="0" />
+      <LineId Id="15" Count="1" />
+      <LineId Id="41" Count="0" />
+      <LineId Id="45" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="113" Count="0" />
+      <LineId Id="17" Count="1" />
+      <LineId Id="136" Count="0" />
+      <LineId Id="134" Count="0" />
+      <LineId Id="137" Count="0" />
+      <LineId Id="114" Count="0" />
+      <LineId Id="10" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

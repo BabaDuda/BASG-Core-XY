@@ -1,0 +1,107 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="MAIN" Id="{7da8c431-8202-4409-aca8-a2333df93ba0}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN
+VAR
+	start: BOOL;
+	caseswitch: (prepare, starting, selectmovement);
+	lool : T_AmsNetID := 'asdasd';
+	ProcessXbox: NT_StartProcess;
+	idk : UINT; 	
+	displayTest : FB_CXSetTextDisplayUSB := (bExecute := TRUE);
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//PrepareAxes();
+//HbotForwardKinematics();
+//nig(CLK := yee);
+//gcodeagent(bExecute := TRUE, bNextLine := yee);
+//IF PrepareAxes.switchcase = PrepareAxes.movement THEN
+//	;
+//END_IF
+
+displayTest(
+	bExecute:= , 
+	sNetID:= , 
+	nPort:= 28928, 
+	eMode:= eCX2100_WriteLines, 
+	sLine1:= '   Welcome to   ', 
+	sLine2:= '   ITAP 2023!   ', 
+	nCursorPosX:= , 
+	nCursorPosY:= , 
+	bBusy=> , 
+	bError=> , 
+	nErrorID=> );
+
+TcXbox();
+
+//GVL.LimitSwitchX := TcXbox.xBoxController.P_Buttons.bA_Button;
+//GVL.LimitSwitchY := TcXbox.xBoxController.P_Buttons.bB_Button;
+
+start := tcXbox.xBoxController.P_Buttons.bStart; //addded 20230711 to avoid the need to use HMI to initialise
+
+CASE caseswitch OF
+	starting:
+		IF start THEN
+			caseswitch := Prepare;
+		END_IF
+		
+	Prepare: 
+	PrepareAxes();
+	IF PrepareAxes.bDone THEN
+		caseswitch := selectmovement;
+	END_IF
+	
+	selectmovement:
+		MovementTypeSelector();
+		GVL.SafetyRun := TRUE;
+		
+END_CASE
+
+E_Stop();
+LimitSwitches();
+//C:\Users\weikoons.BECKHOFF\Downloads\HBot_SelfDefinedKinematics\HBot_SelfDefinedKinematics\Hboy\POUs\MovementType_Teach
+
+//ProcessXbox(PATHSTR := 'C:\Users\MaxwellA.BECKHOFF\Documents\TcXaeShell\HBot_SelfDefinedKinematics\HBot_SelfDefinedKinematics\Hboy\POUs\MovementType_Teach\xboxcontrol.exe', 
+					//	DIRNAME := 'C:\Users\MaxwellA.BECKHOFF\Documents\TcXaeShell\HBot_SelfDefinedKinematics\HBot_SelfDefinedKinematics\Hboy\POUs\MovementType_Teach\',
+						//COMNDLINE := 'GVL.controller 127.0.0.1.1.1',
+						//START := TRUE);]]></ST>
+    </Implementation>
+    <LineIds Name="MAIN">
+      <LineId Id="2" Count="0" />
+      <LineId Id="8" Count="0" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="22" Count="0" />
+      <LineId Id="30" Count="1" />
+      <LineId Id="74" Count="0" />
+      <LineId Id="260" Count="0" />
+      <LineId Id="262" Count="10" />
+      <LineId Id="261" Count="0" />
+      <LineId Id="184" Count="0" />
+      <LineId Id="183" Count="0" />
+      <LineId Id="172" Count="0" />
+      <LineId Id="72" Count="1" />
+      <LineId Id="196" Count="1" />
+      <LineId Id="107" Count="0" />
+      <LineId Id="51" Count="1" />
+      <LineId Id="57" Count="0" />
+      <LineId Id="62" Count="0" />
+      <LineId Id="61" Count="0" />
+      <LineId Id="217" Count="0" />
+      <LineId Id="209" Count="0" />
+      <LineId Id="212" Count="1" />
+      <LineId Id="215" Count="1" />
+      <LineId Id="220" Count="0" />
+      <LineId Id="63" Count="1" />
+      <LineId Id="250" Count="0" />
+      <LineId Id="161" Count="0" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="230" Count="0" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="240" Count="0" />
+      <LineId Id="91" Count="0" />
+      <LineId Id="87" Count="3" />
+      <LineId Id="39" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <GVL Name="GVL" Id="{e744f4d5-1f1c-4a73-b795-378dc7abd093}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL
+	StepperReferenceA	:	AXIS_REF;
+	StepperReferenceB	:	AXIS_REF;
+	LimitSwitchMidLeft 		AT %I* : 	BOOL;
+	LimitSwitchMidRight 	AT %I* : 	BOOL;
+	LimitSwitchBotLeft		AT %I* : 	BOOL;
+	LimitSwitchBotRight 	AT %I* :	BOOL;
+	LimitSwitchTopLeft		AT %I* : 	BOOL;
+	LimitSwitchTopRight		AT %I* : 	BOOL;	
+	SafetyRun         AT %Q*      :   BOOL;
+	SafetyReset       AT %Q*      :   BOOL;
+	SafetyErrAck      AT %Q*      :   BOOL;
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

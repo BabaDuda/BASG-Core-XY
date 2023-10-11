@@ -1,0 +1,135 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="FB_Movement_Teach" Id="{637589ce-1047-4a20-a031-578f2b5d5925}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Movement_Teach
+VAR_INPUT
+	bExecute : BOOL;
+	aArrangedFrames : ARRAY[0..60] OF Frame;
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+	caseswitch : (init, prepare, executemovement, end, error);
+	
+	initPGT : R_TRIG; // used to detect first invokation of FB, stands for initialising postive going transition
+	fbMover : FB_HbotMovement;
+	fbHome : FB_HbotHome;
+	iFrameCount : INT := 0;
+	bNextFrame : BOOL;
+	
+	// HMI controls
+	bRunSequence : BOOL;
+	bRepeat : BOOL;
+	bAbort : BOOL;
+	bEnableHmiButton : BOOL; // This is to enable the HMI Buttons like abort, run sequence, repear...
+	bExit: BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[initPGT(CLK := bExecute);
+IF initPGT.Q THEN // if the FB just started running, set case to init case to HOME (safety)
+	iFrameCount := 0;
+	caseswitch := prepare;
+	bAbort := FALSE;
+	bExit := FALSE;
+	bEnableHmiButton := TRUE;
+END_IF
+
+CASE caseswitch OF 
+//	init:
+//		fbHome(bExecute := TRUE, StepperA := GVL.StepperReferenceA, StepperB := GVL.StepperReferenceB,
+//			limitSwitchX := GVL.LimitSwitchX, limitSwitchY := GVL.LimitSwitchY);
+//		IF fbHome.bError THEN
+//			caseswitch := error;
+//		ELSIF fbHome.bDone THEN
+//			fbHome(bExecute := FALSE, StepperA := GVL.StepperReferenceA, StepperB := GVL.StepperReferenceB,
+//			limitSwitchX := GVL.LimitSwitchX, limitSwitchY := GVL.LimitSwitchY);
+//			caseswitch := prepare;
+//		END_IF
+		
+	prepare:
+		fbMover( bExecute := FALSE, StepperA := GVL.StepperReferenceA, StepperB := GVL.StepperReferenceB); // stop all movement
+		IF aArrangedFrames[iFrameCount].Name = '' THEN
+			iFrameCount := 0;
+			
+		END_IF
+		
+		IF bAbort THEN
+			bExit := TRUE;	
+			bEnableHmiButton := FALSE;
+		ELSIF NOT bAbort THEN		
+			IF bRunSequence THEN
+				IF iFrameCount = 0 AND NOT bNextFrame THEN
+					caseswitch := executemovement;
+				ELSE
+					iFrameCount := iFrameCount + 1;
+					caseswitch := executemovement;
+				END_IF
+			END_IF
+		END_IF
+		
+	executemovement:
+		fbMover(MovementMode := fbMover.MoveAbsolute,
+				rLinearSpeed := 60,
+				rCurrentX := HbotForwardKinematics.rCurrentX,
+				rCurrentY := HbotForwardKinematics.rCurrentY,
+				rDeltaX := aArrangedFrames[iFrameCount].X,
+				rDeltaY := aArrangedFrames[iFrameCount].Y,
+				bExecute := TRUE,
+				StepperA := GVL.StepperReferenceA,
+				StepperB := GVL.StepperReferenceB);
+		IF fbMover.bError THEN
+			caseswitch := error; //catch errors
+		ELSIF fbMover.bDone THEN
+			bNextFrame := TRUE;
+			caseswitch := prepare; // if it is done, go to the prep switch case
+		END_IF
+		IF NOT bRepeat THEN
+			bRunSequence := FALSE;
+		END_IF
+		
+END_CASE]]></ST>
+    </Implementation>
+    <LineIds Name="FB_Movement_Teach">
+      <LineId Id="25" Count="0" />
+      <LineId Id="28" Count="0" />
+      <LineId Id="76" Count="0" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="200" Count="1" />
+      <LineId Id="203" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="9" Count="0" />
+      <LineId Id="20" Count="0" />
+      <LineId Id="23" Count="0" />
+      <LineId Id="35" Count="0" />
+      <LineId Id="37" Count="2" />
+      <LineId Id="45" Count="1" />
+      <LineId Id="40" Count="0" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="78" Count="1" />
+      <LineId Id="109" Count="0" />
+      <LineId Id="138" Count="1" />
+      <LineId Id="142" Count="0" />
+      <LineId Id="122" Count="0" />
+      <LineId Id="195" Count="2" />
+      <LineId Id="202" Count="0" />
+      <LineId Id="191" Count="0" />
+      <LineId Id="137" Count="0" />
+      <LineId Id="132" Count="4" />
+      <LineId Id="127" Count="1" />
+      <LineId Id="194" Count="0" />
+      <LineId Id="108" Count="0" />
+      <LineId Id="42" Count="0" />
+      <LineId Id="61" Count="7" />
+      <LineId Id="44" Count="0" />
+      <LineId Id="71" Count="2" />
+      <LineId Id="118" Count="0" />
+      <LineId Id="74" Count="0" />
+      <LineId Id="70" Count="0" />
+      <LineId Id="164" Count="2" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="21" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

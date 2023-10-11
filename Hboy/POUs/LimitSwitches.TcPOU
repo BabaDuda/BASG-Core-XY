@@ -1,0 +1,92 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="LimitSwitches" Id="{6ecd7bb5-2a35-46c9-88f2-7b7269e77e8a}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM LimitSwitches
+VAR
+	StopMotorA : MC_Stop;
+	StopMotorB : MC_Stop;
+	ResetMotorA : MC_Reset;
+	ResetMotorB : MC_Reset;
+	
+	casestate : INT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[CASE  casestate  OF 
+	0 : //initialisation. If Axis is ready, then prepare to hit limit switch, if not, do nothing
+	IF  PrepareAxes.switchcase = Implicit_Enum__PrepareAxes__switchcase.Movement THEN 
+		casestate := 10;
+		ELSE 
+			//chill here
+	END_IF
+	10 : // Check If Limit Switch Triggered 
+	IF GVL.LimitSwitchBotLeft OR GVL.LimitSwitchBotRight OR GVL.LimitSwitchMidLeft OR GVL.LimitSwitchMidRight OR GVL.LimitSwitchTopLeft OR GVL.LimitSwitchTopRight THEN 
+		 StopMotorA(Execute := TRUE, Axis:= GVL.StepperReferenceA) ;  (* actual function to stop the motor *)
+		 StopMotorB(Execute := TRUE,Axis:= GVL.StepperReferenceB) ;  (* actual function to stop the motor *)
+		 casestate := 20; 
+		 ELSE 
+		ResetMotorA (Execute := FALSE, Axis := GVL.StepperReferenceA); (*Reset the Motors *)
+		ResetMotorB (Execute := FALSE, Axis := GVL.StepperReferenceB); (*Reset the Motors *)
+			 //chill again. Wait for Lim Switch Activation 
+	END_IF
+	
+	20 : // Wait for Limit Switches to NOT be pressed before allowing movement again
+	IF GVL.LimitSwitchBotLeft = FALSE AND GVL.LimitSwitchBotRight = FALSE AND GVL.LimitSwitchMidLeft = FALSE AND GVL.LimitSwitchMidRight = FALSE AND GVL.LimitSwitchTopLeft = FALSE AND GVL.LimitSwitchTopRight = FALSE THEN 
+		casestate := 30 ;
+		ELSE 
+			//chill	
+	END_IF
+			
+	30 : 
+		
+		IF StopMotorA.Active = FALSE THEN // IF FB not active, stop and start the FB 
+		StopMotorA(Execute := TRUE, Axis:= GVL.StepperReferenceA) ;  (* actual function to stop the motor *)
+		StopMotorB(Execute := TRUE,Axis:= GVL.StepperReferenceB) ;  (* actual function to stop the motor *)
+		casestate := 40; 
+		ELSIF StopMotorA.Active = TRUE THEN  //After Stopping and Starting, If ACtive = True continue as per normal
+		ResetMotorA (Execute := TRUE, Axis := GVL.StepperReferenceA); (*Reset the Motors *)
+		ResetMotorB (Execute := TRUE, Axis := GVL.StepperReferenceB); (*Reset the Motors *)
+		StopMotorA(Execute := FALSE, Axis:= GVL.StepperReferenceA) ;  (* actual function to continue the motor *)
+		StopMotorB(Execute := FALSE,Axis:= GVL.StepperReferenceB) ;  (* actual function to continue the motor *)
+		casestate := 0;
+		END_IF
+	40 :  // Buffer for resetting the FB 
+		casestate := 30;
+		
+END_CASE]]></ST>
+    </Implementation>
+    <LineIds Name="LimitSwitches">
+      <LineId Id="5" Count="0" />
+      <LineId Id="13" Count="0" />
+      <LineId Id="15" Count="1" />
+      <LineId Id="20" Count="1" />
+      <LineId Id="17" Count="1" />
+      <LineId Id="22" Count="1" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="27" Count="1" />
+      <LineId Id="59" Count="0" />
+      <LineId Id="57" Count="0" />
+      <LineId Id="29" Count="0" />
+      <LineId Id="24" Count="0" />
+      <LineId Id="31" Count="1" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="56" Count="0" />
+      <LineId Id="43" Count="0" />
+      <LineId Id="45" Count="0" />
+      <LineId Id="78" Count="0" />
+      <LineId Id="66" Count="1" />
+      <LineId Id="81" Count="0" />
+      <LineId Id="97" Count="0" />
+      <LineId Id="83" Count="0" />
+      <LineId Id="85" Count="0" />
+      <LineId Id="72" Count="0" />
+      <LineId Id="102" Count="0" />
+      <LineId Id="106" Count="3" />
+      <LineId Id="103" Count="1" />
+      <LineId Id="98" Count="0" />
+      <LineId Id="93" Count="0" />
+      <LineId Id="92" Count="0" />
+      <LineId Id="14" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

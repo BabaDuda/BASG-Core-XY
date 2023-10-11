@@ -1,0 +1,87 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <POU Name="FB_HbotKinematics" Id="{38174922-c0cf-4d7b-ac15-08690c18c836}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_HbotKinematics
+VAR_INPUT
+END_VAR
+VAR_OUTPUT
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Folder Name="QuickMaths" Id="{006a2058-a33e-4c01-8869-64833f9d954b}" />
+    <Method Name="CalculateAxisRotationRelative" Id="{8d56fa79-f3a7-44de-9984-01e98a8e68c3}" FolderPath="QuickMaths\">
+      <Declaration><![CDATA[METHOD CalculateAxisRotationRelative : ARRAY[0..1] OF REAL; // returns [a,b]
+VAR_INPUT
+	rDeltaX : REAL;
+	rDeltaY : REAL;
+END_VAR
+VAR
+	returnableArray : ARRAY[0..1] OF REAL;
+	polar : ARRAY[0..1] OF REAL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[//polar := PolarCoordinates(DeltaX := rDeltaX, DeltaY := rDeltaY);
+returnableArray[0] := -rDeltaX - rDeltaY;
+returnableArray[1] := -rDeltaX + rDeltaY;
+CalculateAxisRotationRelative := returnableArray;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="CalculateVelocities" Id="{388f9534-5947-427e-b76f-67dfe4070d01}" FolderPath="QuickMaths\">
+      <Declaration><![CDATA[METHOD CalculateVelocities : ARRAY[0..1] OF REAL
+VAR_INPUT
+	rDeltaX : REAL;
+	rDeltaY : REAL;
+	rLinearSpeed : REAL;
+END_VAR
+VAR
+	returnableArray : ARRAY[0..1] OF REAL;
+	rAngle : REAL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[rAngle := GetAngleFromXY(rDeltaX := rDeltaX, rDeltaY := rDeltaY);
+returnableArray[0] := ABS(rLinearSpeed * COS(rAngle) + rLinearSpeed * SIN(rAngle));
+returnableArray[1] := ABS(rLinearSpeed * COS(rAngle) - rLinearSpeed * SIN(rAngle));
+CalculateVelocities := returnableArray;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="GetAngleFromXY" Id="{addf0d63-8fc5-432c-aa71-d612e590c947}" FolderPath="QuickMaths\">
+      <Declaration><![CDATA[METHOD GetAngleFromXY : REAL
+VAR_INPUT
+	rDeltaX : REAL;
+	rDeltaY : REAL;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF rDeltaX = 0 THEN
+	rDeltaX := 0.0000001;
+END_IF
+IF rDeltaY = 0 THEN
+	rDeltaY := 0.0000001;
+END_IF
+GetAngleFromXY := ATAN(rDeltaX/rDeltaY);]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_HbotKinematics">
+      <LineId Id="9" Count="0" />
+    </LineIds>
+    <LineIds Name="FB_HbotKinematics.CalculateAxisRotationRelative">
+      <LineId Id="12" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="13" Count="1" />
+    </LineIds>
+    <LineIds Name="FB_HbotKinematics.CalculateVelocities">
+      <LineId Id="12" Count="0" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="13" Count="1" />
+    </LineIds>
+    <LineIds Name="FB_HbotKinematics.GetAngleFromXY">
+      <LineId Id="8" Count="4" />
+      <LineId Id="5" Count="0" />
+      <LineId Id="13" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

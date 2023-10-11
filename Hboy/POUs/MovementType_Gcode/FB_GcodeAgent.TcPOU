@@ -1,0 +1,88 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="FB_GcodeAgent" Id="{76f8f1b8-8bc2-46fa-945f-c481147d0a02}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_GcodeAgent
+VAR_INPUT
+	bExecute : BOOL;
+	bNextLine : BOOL;
+	bWriteDone : BOOL;
+	sGcodeFile : STRING;
+	sFBName : STRING;
+	bEnd : BOOL;
+END_VAR
+VAR_OUTPUT
+	x : REAL;
+	y : REAL;
+	z : REAL;
+	e : REAL;
+	f : REAL;
+END_VAR
+VAR
+	trig : R_TRIG;
+	Process : NT_StartProcess;
+	sCommand : STRING(1000);
+	placeholder : ARRAY [0..200] OF STRING(200);
+END_VAR
+//'main.py choppt.gcode MovementTypeSelector.fbGcode.gcodeagent 10.123.67.6.1.1'
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// prepare command to run python script]
+trig(CLK := bExecute);
+placeholder[0] := sGcodeFile;
+placeholder[1] := ' ';
+placeholder[2] := sFBName;
+placeholder[3] := ' ';
+placeholder[4] := HbotForwardKinematics.fbAms.AddrString;
+
+sCommand := ConcatAll(placeholder); //concat all
+
+Process(NETID := '10.123.6.66.1.1',
+		COMNDLINE := sCommand,
+		PATHSTR := 'C:\Users\weikoons.BECKHOFF\Downloads\HBot_SelfDefinedKinematics\HBot_SelfDefinedKinematics\Hboy\POUs\MovementType_Gcode\main.exe',
+//		DIRNAME := 'C:\Users\MaxwellA.BECKHOFF\Desktop\Coding\Python\asd\Gcode',
+		START := trig.Q); // start process
+		
+		
+		]]></ST>
+    </Implementation>
+    <Method Name="ConcatAll" Id="{745a41d0-fcb4-41c1-b418-a68acb14b841}">
+      <Declaration><![CDATA[METHOD ConcatAll : STRING(1000)
+VAR_INPUT
+	allString : ARRAY [0..200] OF STRING(200);
+END_VAR
+VAR
+	resultString : STRING(1000);
+	i : INT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[FOR i := 0 TO 199 DO
+	IF allString[i] = '' THEN
+		ConcatAll := resultString;
+	END_IF
+	resultString := CONCAT(resultString, allString[i]);
+END_FOR
+ConcatAll := resultString;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="FB_GcodeAgent">
+      <LineId Id="161" Count="0" />
+      <LineId Id="165" Count="0" />
+      <LineId Id="89" Count="0" />
+      <LineId Id="91" Count="1" />
+      <LineId Id="96" Count="1" />
+      <LineId Id="189" Count="0" />
+      <LineId Id="86" Count="0" />
+      <LineId Id="93" Count="0" />
+      <LineId Id="31" Count="0" />
+      <LineId Id="50" Count="0" />
+      <LineId Id="133" Count="1" />
+      <LineId Id="164" Count="0" />
+      <LineId Id="213" Count="0" />
+      <LineId Id="237" Count="1" />
+    </LineIds>
+    <LineIds Name="FB_GcodeAgent.ConcatAll">
+      <LineId Id="42" Count="5" />
+      <LineId Id="11" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

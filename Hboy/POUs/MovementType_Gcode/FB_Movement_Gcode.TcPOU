@@ -1,0 +1,110 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="FB_Movement_Gcode" Id="{5782bb99-49b0-437e-b251-04e1fb995da8}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Movement_Gcode
+VAR_INPUT
+	bExecute : BOOL;
+END_VAR
+VAR_OUTPUT
+	bBusy : BOOL;
+	bError : BOOL;
+	bFinished : BOOL;
+	initial : R_TRIG;
+END_VAR
+VAR
+	gcodeagent : FB_GcodeAgent;
+	// define kinematics objects
+	fbMover : FB_HbotMovement;
+	fbHome : FB_HbotHome;
+	sGodeFileName : STRING;
+	caseswitch : (init, prep, movement, end, error);
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[initial(CLK := bExecute);
+IF initial.Q THEN // on initial trigger, run initilsation case to initiate gcode and reset variables
+	caseswitch := init;
+	bFinished := FALSE;
+	bBusy := TRUE;
+	gcodeagent.bEnd := FALSE;
+END_IF
+CASE caseswitch OF
+	init:
+		IF sGodeFileName <> '' THEN
+			IF bExecute AND NOT bError THEN
+			gcodeagent(sGcodeFile := sGodeFileName, sFBName := 'MovementTypeSelector.fbGcode.gcodeagent', bExecute := bExecute);
+			// run gcode agent python script
+			IF NOT gcodeagent.Process.BUSY THEN 
+				caseswitch := prep;
+			END_IF
+		END_IF
+		END_IF
+	prep:
+		fbMover( bExecute := FALSE, StepperA := GVL.StepperReferenceA, StepperB := GVL.StepperReferenceB); // stop all movement
+		IF gcodeagent.bWriteDone THEN // wait for gcode agent to write a new line before going to next step
+			caseswitch := movement;
+		END_IF
+		IF gcodeagent.bEnd THEN
+			caseswitch := end; // if gcode agent sends a end command, go to end case
+		END_IF
+	movement:
+		fbMover(MovementMode := fbMover.MoveAbsolute,
+				rLinearSpeed := 60,
+				rCurrentX := HbotForwardKinematics.rCurrentX,
+				rCurrentY := HbotForwardKinematics.rCurrentY,
+				rDeltaX := gcodeagent.x,
+				rDeltaY := gcodeagent.y,
+				bExecute := TRUE,
+				StepperA := GVL.StepperReferenceA,
+				StepperB := GVL.StepperReferenceB); // once gcode is received, move to positions
+				 
+		IF fbMover.bError THEN
+			caseswitch := error; //catch errors
+		ELSIF fbMover.bDone THEN
+			caseswitch := prep; // if it is done, go to the prep switch case
+			gcodeagent.bNextLine := TRUE; // send signal to python script to show that the movement is completed
+		END_IF
+	end:
+		bFinished := TRUE;
+		bBusy := FALSE;
+		gcodeagent(sGcodeFile := 'choppt.gcode', sFBName := 'MovementTypeSelector.fbGcode.gcodeagent', bExecute := FALSE);
+	error:
+		bError := TRUE;
+END_CASE
+]]></ST>
+    </Implementation>
+    <LineIds Name="FB_Movement_Gcode">
+      <LineId Id="69" Count="2" />
+      <LineId Id="79" Count="1" />
+      <LineId Id="85" Count="0" />
+      <LineId Id="72" Count="0" />
+      <LineId Id="23" Count="1" />
+      <LineId Id="168" Count="0" />
+      <LineId Id="171" Count="5" />
+      <LineId Id="169" Count="1" />
+      <LineId Id="30" Count="0" />
+      <LineId Id="49" Count="0" />
+      <LineId Id="31" Count="2" />
+      <LineId Id="73" Count="2" />
+      <LineId Id="34" Count="0" />
+      <LineId Id="36" Count="0" />
+      <LineId Id="149" Count="0" />
+      <LineId Id="142" Count="0" />
+      <LineId Id="144" Count="0" />
+      <LineId Id="38" Count="0" />
+      <LineId Id="145" Count="1" />
+      <LineId Id="39" Count="0" />
+      <LineId Id="147" Count="1" />
+      <LineId Id="40" Count="1" />
+      <LineId Id="43" Count="1" />
+      <LineId Id="52" Count="0" />
+      <LineId Id="42" Count="0" />
+      <LineId Id="76" Count="1" />
+      <LineId Id="81" Count="0" />
+      <LineId Id="84" Count="0" />
+      <LineId Id="50" Count="1" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="21" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

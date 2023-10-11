@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <POU Name="FB_PowerAll" Id="{2e910ecb-c84c-412d-bd36-a31fe2d44037}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_PowerAll
+VAR_INPUT
+	bEnable : BOOL;
+END_VAR
+VAR_OUTPUT
+	bStatus : BOOL;
+	bError : BOOL;
+END_VAR
+VAR
+	power1 : MC_Power;
+	power2 : MC_Power;
+END_VAR
+VAR_IN_OUT
+	io_M1 : AXIS_REF;
+	io_M2 : AXIS_REF;
+END_VAR
+
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[power1(Axis := io_M1, Enable := bEnable, Enable_Negative := bEnable, Enable_Positive := bEnable);
+power2(Axis := io_M2, Enable := bEnable, Enable_Negative := bEnable, Enable_Positive := bEnable);
+
+bError := power1.Error OR power2.Error;
+bStatus := power1.Status AND power2.Status AND NOT bError;]]></ST>
+    </Implementation>
+    <LineIds Name="FB_PowerAll">
+      <LineId Id="25" Count="3" />
+      <LineId Id="9" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

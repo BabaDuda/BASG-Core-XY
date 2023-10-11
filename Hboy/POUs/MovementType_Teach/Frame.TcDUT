@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.9">
+  <DUT Name="Frame" Id="{1b792bef-e222-4263-bf55-2d37b3f66bbf}">
+    <Declaration><![CDATA[TYPE Frame :
+STRUCT
+	Name : STRING;
+	X : REAL;
+	Y : REAL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>
